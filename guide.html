@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Acid Plum Field Guide</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: a printed-manual feel. Each step = text column + the device drawn in that mode, LEDs as the only colour. */
+:root {
+  --paper: #ffffff;
+  --ink: #0d0d0e;
+  --muted: #5d5d66;
+  --line: #e3e3e8;
+  --chip: #f4f4f6;
+  /* the device itself stays black / white in both themes */
+  --case: #121214;
+  --case-edge: #2a2a2e;
+  --cap: #efeff1;
+  --cap-text: #1a1a1d;
+  --cap-off: #8d8d95;
+  --cap-orange: #e8743b;
+  /* LED colours used by the firmware (colors.h) */
+  --led-purple: #8473e5;
+  --led-cyan: #73d4e5;
+  --led-bar: #739be5;
+  --led-volume: #2f6bff;
+  --led-red: #ff3b3b;
+  --led-green: #20e040;
+  --f-display: "Archivo", "Arial Black", system-ui, sans-serif;
+  --f-body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --paper: #0b0b0c; --ink: #f4f4f6; --muted: #a2a2ad; --line: #26262b; --chip: #18181b; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --paper: #0b0b0c; --ink: #f4f4f6; --muted: #a2a2ad; --line: #26262b; --chip: #18181b; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body {
+  background: var(--paper); color: var(--ink);
+  font-family: var(--f-body); font-size: 16px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 64px;
+}
+.wrap { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 56px; }
+
+header { display: grid; gap: 14px; border-bottom: 2px solid var(--ink); padding-bottom: 28px; }
+.eyebrow { font-family: var(--f-mono); font-size: .74rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+h1 {
+  font-family: var(--f-display); font-variation-settings: "wdth" 125; font-weight: 900;
+  font-size: clamp(2.4rem, 7vw, 4.6rem); line-height: .95; letter-spacing: -.02em; margin: 0; text-wrap: balance;
+}
+.lede { max-width: 62ch; color: var(--muted); margin: 0; font-size: 1.05rem; }
+.leds { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 6px; }
+.leds span { display: inline-flex; align-items: center; gap: 8px; font-size: .86rem; }
+.dot { width: 11px; height: 11px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); flex: none; }
+
+.steps-nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.steps-nav a {
+  display: inline-flex; gap: 8px; align-items: baseline; text-decoration: none; color: var(--ink);
+  border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-size: .9rem;
+}
+.steps-nav a:hover, .steps-nav a:focus-visible { border-color: var(--ink); outline: none; }
+.steps-nav b { font-family: var(--f-mono); font-size: .8rem; }
+
+section.step { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 28px 48px; align-items: start; border-top: 1px solid var(--line); padding-top: 36px; scroll-margin-top: 16px; }
+.num { font-family: var(--f-mono); font-weight: 700; font-size: .8rem; letter-spacing: .1em; color: var(--muted); }
+h2 {
+  font-family: var(--f-display); font-variation-settings: "wdth" 112; font-weight: 800;
+  font-size: clamp(1.6rem, 3.6vw, 2.3rem); line-height: 1.05; margin: 6px 0 12px; text-wrap: balance;
+}
+.text { min-width: 0; max-width: 60ch; }
+.text p { margin: 0 0 12px; }
+.how { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 10px; }
+.how li { display: grid; grid-template-columns: 8.6rem minmax(0, 1fr); gap: 12px; align-items: baseline; }
+.k {
+  font-family: var(--f-mono); font-size: .78rem; font-weight: 700; letter-spacing: .02em;
+  background: var(--chip); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; justify-self: start; white-space: nowrap;
+}
+.tip { margin-top: 16px; font-size: .92rem; color: var(--muted); border-left: 3px solid var(--led-purple); padding-left: 12px; }
+.tip.cyan { border-left-color: var(--led-cyan); }
+.inline-led { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--c); box-shadow: 0 0 6px var(--c); margin: 0 3px 1px 0; vertical-align: middle; }
+
+/* ---- device drawing ---- */
+figure { margin: 0; display: grid; gap: 10px; justify-items: center; }
+figcaption { font-size: .82rem; color: var(--muted); text-align: center; max-width: 300px; }
+.device {
+  width: 300px; max-width: 100%; background: var(--case); border-radius: 22px; padding: 18px;
+  box-shadow: inset 0 0 0 1px var(--case-edge), 0 18px 40px -18px rgba(0,0,0,.45);
+}
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.slot { aspect-ratio: 1; display: grid; place-items: center; min-width: 0; }
+.key {
+  width: 100%; height: 100%; border-radius: 9px; background: var(--cap); color: var(--cap-text);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  font-family: var(--f-mono); text-align: center; position: relative; padding: 4px;
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,.14);
+}
+.key .id { font-size: .58rem; font-weight: 700; letter-spacing: .06em; opacity: .55; }
+.key .lb { font-size: .6rem; font-weight: 700; line-height: 1.1; overflow-wrap: normal; word-break: keep-all; hyphens: manual; }
+.key.off { background: #3a3a3f; color: var(--cap-off); box-shadow: none; }
+.key.off .lb { font-weight: 500; }
+.key.orange { background: var(--cap-orange); color: #1d0e05; }
+.key.orange.off { background: #6b3a22; color: #c99a80; }
+.key.lit::after {
+  content: ""; position: absolute; inset: -3px; border-radius: 11px; pointer-events: none;
+  box-shadow: 0 0 0 2px var(--g), 0 0 16px 2px var(--g);
+  opacity: var(--o, 1);
+}
+.key.lit .ledbar { position: absolute; top: 4px; left: 50%; width: 14px; height: 3px; margin-left: -7px; border-radius: 2px; background: var(--g); opacity: var(--o, 1); }
+.knob, .stick { width: 78%; aspect-ratio: 1; border-radius: 50%; position: relative; }
+.knob { background: repeating-conic-gradient(#d9d9dd 0 6deg, #a9a9b0 6deg 12deg); box-shadow: inset 0 0 0 5px #1d1d20; }
+.knob::after { content: ""; position: absolute; inset: 30%; border-radius: 50%; background: #e9e9ec; }
+.stick { background: radial-gradient(circle at 40% 35%, #4a4a50, #121214 70%); box-shadow: inset 0 0 0 3px #2c2c31; }
+.ring { position: absolute; inset: -5px; border-radius: 50%; box-shadow: 0 0 0 2px var(--g), 0 0 14px 2px var(--g); }
+.logo { font-family: var(--f-display); font-variation-settings: "wdth" 70; font-weight: 900; font-style: italic; color: #e9e9ec; font-size: 1.2rem; }
+.silk { margin-top: 12px; font-family: var(--f-mono); font-size: .62rem; color: #8a8a92; text-align: center; letter-spacing: .08em; }
+.ctl { font-family: var(--f-mono); font-size: .62rem; color: #cfcfd5; text-align: center; margin-top: 4px; line-height: 1.15; }
+.slot.tall { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+.legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; font-size: .78rem; color: var(--muted); max-width: 300px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+footer { border-top: 2px solid var(--ink); padding-top: 22px; display: grid; gap: 10px; color: var(--muted); font-size: .92rem; }
+footer h3 { font-family: var(--f-display); font-variation-settings: "wdth" 112; font-weight: 800; color: var(--ink); margin: 0; font-size: 1.15rem; }
+footer ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.back { justify-self: start; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: .9rem; color: var(--ink); text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; }
+.back:hover, .back:focus-visible { border-color: var(--led-purple); outline: none; }
+.tip a { color: inherit; }
+
+@media (max-width: 760px) {
+  section.step { grid-template-columns: minmax(0, 1fr); }
+  figure { justify-self: center; }
+  .how li { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .key.lit.pulse::after, .key.lit.pulse .ledbar { animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+}
+</style>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)} body{margin:0} img{max-width:100%} [hidden]{display:none!important}</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header>
+    <a class="back" href="./">← Sound Lab: design sounds for the 7 banks</a>
+    <div class="eyebrow">Acid Plum · pocket loop synth · firmware V1.0.10</div>
+    <h1>Acid Plum Field Guide</h1>
+    <p class="lede">Seven note keys, six parameter keys, a knob and a stick. Each step below shows which keys do what in that mode, and which lights tell you where you are.</p>
+    <div class="leds" aria-label="LED colours">
+      <span><i class="dot" style="--c: var(--led-purple)"></i>Purple: chord mode, active page, recording</span>
+      <span><i class="dot" style="--c: var(--led-cyan)"></i>Light blue: melody mode, loop bars</span>
+      <span><i class="dot" style="--c: var(--led-volume)"></i>Blue: volume (knob)</span>
+      <span><i class="dot" style="--c: var(--led-red)"></i>Red: delete</span>
+      <span><i class="dot" style="--c: var(--led-green)"></i>Green: new sound received</span>
+    </div>
+    <ul class="steps-nav" aria-label="Steps">
+      <li><a href="#play"><b>0</b>Quick start</a></li>
+      <li><a href="#sound"><b>1</b>Sound</a></li>
+      <li><a href="#key"><b>2</b>Key</a></li>
+      <li><a href="#effects"><b>3</b>Effects</a></li>
+      <li><a href="#tempo"><b>4</b>Tempo &amp; bars</a></li>
+      <li><a href="#loop"><b>5</b>Loop</a></li>
+    </ul>
+  </header>
+
+  <section class="step" id="play">
+    <div class="text">
+      <div class="num">STEP 0</div>
+      <h2>Quick start: play chords and melodies</h2>
+      <p>Switch it on and play. The Acid Plum starts in <b>C major, chord mode</b>. Each note key plays one chord of the key, so everything you press fits together.</p>
+      <ul class="how">
+        <li><span class="k">NOTE 1–7</span><span>Chords C · Dm · Em · F · G · Am · B°. The key lights while it sounds.</span></li>
+        <li><span class="k">PAR4</span><span>Chord ↔ melody. <i class="inline-led" style="--c: var(--led-purple)"></i>purple = chords, <i class="inline-led" style="--c: var(--led-cyan)"></i>light blue = single notes.</span></li>
+        <li><span class="k">Knob</span><span>Volume. The knob light glows <i class="inline-led" style="--c: var(--led-volume)"></i>blue, brighter = louder.</span></li>
+        <li><span class="k">Stick · chords</span><span>Push in 8 directions to change the chord: up = major ↔ minor, right = 7th, down = sus4, left = diminished, and more on the diagonals.</span></li>
+        <li><span class="k">Stick · melody</span><span>Up / down = one octave higher / lower. Right = vibrato, left = tremolo.</span></li>
+      </ul>
+    </div>
+    <figure>
+      <div class="device" data-mode="play" role="img" aria-label="Device in chord mode: NOTE1 held and lit purple, PAR4 purple, knob is volume"></div>
+      <figcaption>Chord mode, NOTE1 held. Hold any key while you move the stick.</figcaption>
+    </figure>
+  </section>
+
+  <section class="step" id="sound">
+    <div class="text">
+      <div class="num">STEP 1</div>
+      <h2>Pick a synth sound</h2>
+      <p>Press <b>PAR1</b>, then a note key. You hear a short C–E–G in the new sound, and that key stays purple so you know which one is active.</p>
+      <ul class="how">
+        <li><span class="k">PAR1</span><span>Open the sound page (PAR1 purple). Press again to leave.</span></li>
+        <li><span class="k">NOTE 1–7</span><span>Sine · Lo-fi keys · Chill pad · Techno stab · Chiptune · Strong · Rock/punk.</span></li>
+      </ul>
+      <p class="tip">Design your own sounds in the <a href="./">Acid Plum Sound Lab</a> and send them over USB. The bank key flashes <i class="inline-led" style="--c: var(--led-green)"></i>green when one arrives. A recorded loop keeps the sound it was recorded with.</p>
+    </div>
+    <figure>
+      <div class="device" data-mode="sound" role="img" aria-label="Sound page: PAR1 purple, NOTE keys labelled with the 7 sounds, NOTE1 selected"></div>
+      <figcaption>Sound page. NOTE1 (Sine) is the current sound.</figcaption>
+    </figure>
+  </section>
+
+  <section class="step" id="key">
+    <div class="text">
+      <div class="num">STEP 2</div>
+      <h2>Choose a key and octave</h2>
+      <p>Press <b>PAR2</b>, then a note key to move everything to another major key. The tonic chord plays as an arpeggio to confirm.</p>
+      <ul class="how">
+        <li><span class="k">PAR2</span><span>Open the key page (PAR2 purple). Press again to leave.</span></li>
+        <li><span class="k">NOTE 1–7</span><span>C · D · E · F · G · A · B major.</span></li>
+        <li><span class="k">Stick ↑ / ↓</span><span>One octave up or down per push. Let it return to the centre before the next push.</span></li>
+      </ul>
+      <p class="tip">Loops you've already recorded keep their notes. Changing key only affects what you play next.</p>
+    </div>
+    <figure>
+      <div class="device" data-mode="key" role="img" aria-label="Key page: PAR2 purple, NOTE keys labelled C to B, NOTE5 (G) selected, stick changes octave"></div>
+      <figcaption>Key page, G major selected.</figcaption>
+    </figure>
+  </section>
+
+  <section class="step" id="effects">
+    <div class="text">
+      <div class="num">STEP 3</div>
+      <h2>Add effects</h2>
+      <p>Press <b>PAR3</b>. Each note key is one effect: <b>tap it to switch it on or off</b>, then turn the knob to set how much. The effects work on everything: what you play and your loops.</p>
+      <ul class="how">
+        <li><span class="k">PAR3</span><span>Open the effects page (PAR3 purple). Press again to leave; effects stay on and PAR3 stays dimly lit.</span></li>
+        <li><span class="k">NOTE 1–7</span><span>Echo · Chorus · Tone · Drive · Pump · Gate · Wobble.</span></li>
+        <li><span class="k">Knob</span><span>Amount of the last effect you tapped (Tone: darker ← → brighter; Gate: speed of the chop).</span></li>
+      </ul>
+      <p class="tip">Effects that are on light purple; the one the knob edits is the brightest. Echo, Pump and Gate follow your tempo.</p>
+    </div>
+    <figure>
+      <div class="device" data-mode="effects" role="img" aria-label="Effects page: PAR3 purple, Echo on and edited (bright purple), Pump on (dim purple), knob sets the amount"></div>
+      <figcaption>Echo on (being edited) and Pump on.</figcaption>
+    </figure>
+  </section>
+
+  <section class="step" id="tempo">
+    <div class="text">
+      <div class="num">STEP 4</div>
+      <h2>Set the tempo and loop length</h2>
+      <p>Press <b>PAR6</b>. The metronome starts so you can feel the loop before recording it.</p>
+      <ul class="how">
+        <li><span class="k">NOTE 1–7</span><span>Loop length: 1 to 7 bars (default 4).</span></li>
+        <li><span class="k">Stick ↑ / ↓</span><span>Beats per bar, 2 to 12 (default 4).</span></li>
+        <li><span class="k">Knob</span><span>Tempo, 40–240 BPM (default 120).</span></li>
+      </ul>
+      <p class="tip cyan">The selected bars light <i class="inline-led" style="--c: var(--led-cyan)"></i>light blue; the bar you're in flashes <i class="inline-led" style="--c: var(--led-purple)"></i>purple on each beat. Once a loop is recorded, bars and beats are locked; tempo can still change.</p>
+    </div>
+    <figure>
+      <div class="device" data-mode="tempo" role="img" aria-label="Loop settings: PAR6 purple, NOTE1 to NOTE4 light blue for 4 bars, NOTE2 purple as the current bar, knob is BPM, stick is beats per bar"></div>
+      <figcaption>4 bars selected, playing bar 2.</figcaption>
+    </figure>
+  </section>
+
+  <section class="step" id="loop">
+    <div class="text">
+      <div class="num">STEP 5</div>
+      <h2>Record loops</h2>
+      <p><b>PAR5</b> is the orange key. It works from any page, so you can loop while choosing sounds or effects.</p>
+      <ul class="how">
+        <li><span class="k">Tap PAR5</span><span>One bar of count-in clicks, then it records for the whole loop and starts playing it back.</span></li>
+        <li><span class="k">Tap again</span><span>Adds a layer from the next bar 1 while the others play. Up to 4 layers. Tap while waiting to cancel.</span></li>
+        <li><span class="k">Hold PAR5</span><span>After 0.6 s it turns <i class="inline-led" style="--c: var(--led-red)"></i>red. Tap it again to delete the newest layer (or wait 3 s to cancel).</span></li>
+      </ul>
+      <p class="tip">PAR5 pulses purple on the beat while recording or waiting. Anything you play live over the loop is just for fun: it's only recorded while a recording is running.</p>
+    </div>
+    <figure>
+      <div class="device" data-mode="loop" role="img" aria-label="Looper: PAR5 orange key pulsing purple while recording, note keys play as usual"></div>
+      <figcaption>Recording a layer: PAR5 pulses with the beat.</figcaption>
+    </figure>
+  </section>
+
+  <footer>
+    <h3>Good to know</h3>
+    <ul>
+      <li>Keep your hands off the stick while switching on: it measures its centre then.</li>
+      <li>Hold <b>PAR1</b> while switching on to bring back the 7 factory sounds (all sound keys flash green).</li>
+      <li>On any page, the active PAR key is purple. Press it again (or another PAR) to get back to playing.</li>
+    </ul>
+    <a class="back" href="./">← Back to the Sound Lab</a>
+  </footer>
+</div>
+
+<script>
+(() => {
+  // Physical layout (rows top to bottom), as on the board
+  const LAYOUT = [
+    ["enc", "par5", "par6", "stick"],
+    ["par1", "par2", "par3", "par4"],
+    ["n1", "n3", "n5", "n7"],
+    ["logo", "n2", "n4", "n6"],
+  ];
+  const ID = { par1: "PAR1", par2: "PAR2", par3: "PAR3", par4: "PAR4", par5: "PAR5", par6: "PAR6",
+               n1: "NOTE1", n2: "NOTE2", n3: "NOTE3", n4: "NOTE4", n5: "NOTE5", n6: "NOTE6", n7: "NOTE7" };
+  const P = "var(--led-purple)", C = "var(--led-cyan)", B = "var(--led-volume)";
+  const chords = { n1: "C", n2: "Dm", n3: "Em", n4: "F", n5: "G", n6: "Am", n7: "B°" };
+  const all = (labels) => labels;
+
+  // Per mode: key labels, lit keys {key: [colour, opacity, pulse]}, knob / stick roles, active keys
+  const MODES = {
+    play:    { labels: { ...chords, par4: "chord / melody", par5: "loop" },
+               active: ["n1","n2","n3","n4","n5","n6","n7","par4","par5"],
+               lit: { n1: [P], par4: [P] }, enc: ["volume", B], stick: ["chord shape"] },
+    sound:   { labels: { par1: "sound", n1: "Sine", n2: "Lo-fi keys", n3: "Chill pad", n4: "Techno stab", n5: "Chip­tune", n6: "Strong", n7: "Rock / punk" },
+               active: ["par1","n1","n2","n3","n4","n5","n6","n7"],
+               lit: { par1: [P], n1: [P] } },
+    key:     { labels: { par2: "key", n1: "C", n2: "D", n3: "E", n4: "F", n5: "G", n6: "A", n7: "B" },
+               active: ["par2","n1","n2","n3","n4","n5","n6","n7"],
+               lit: { par2: [P], n5: [P] }, stick: ["octave ↑↓"] },
+    effects: { labels: { par3: "effects", n1: "Echo", n2: "Chorus", n3: "Tone", n4: "Drive", n5: "Pump", n6: "Gate", n7: "Wobble" },
+               active: ["par3","n1","n2","n3","n4","n5","n6","n7"],
+               lit: { par3: [P], n1: [P], n5: [P, .4] }, enc: ["amount", P] },
+    tempo:   { labels: { par6: "loop set", n1: "1 bar", n2: "2", n3: "3", n4: "4", n5: "5", n6: "6", n7: "7" },
+               active: ["par6","n1","n2","n3","n4","n5","n6","n7"],
+               lit: { par6: [P], n1: [C], n2: [P, 1, true], n3: [C], n4: [C] }, enc: ["BPM"], stick: ["beats / bar"] },
+    loop:    { labels: { ...chords, par5: "rec · hold: delete" },
+               active: ["par5","n1","n2","n3","n4","n5","n6","n7"],
+               lit: { par5: [P, 1, true] } },
+  };
+
+  function slot(kind, m) {
+    const s = document.createElement("div");
+    s.className = "slot";
+    if (kind === "enc" || kind === "stick") {
+      s.classList.add("tall");
+      const role = kind === "enc" ? m.enc : m.stick;
+      const el = document.createElement("div");
+      el.className = kind === "enc" ? "knob" : "stick";
+      if (role && role[1]) { const r = document.createElement("i"); r.className = "ring"; r.style.setProperty("--g", role[1]); el.appendChild(r); }
+      s.appendChild(el);
+      const t = document.createElement("div");
+      t.className = "ctl";
+      t.textContent = role ? role[0] : (kind === "enc" ? "knob" : "stick");
+      if (!role) t.style.opacity = ".45";
+      s.appendChild(t);
+      return s;
+    }
+    if (kind === "logo") { s.innerHTML = '<span class="logo" aria-hidden="true">EL</span>'; return s; }
+    const k = document.createElement("div");
+    const on = m.active.includes(kind);
+    k.className = "key" + (kind === "par5" ? " orange" : "") + (on ? "" : " off");
+    const lit = m.lit[kind];
+    if (lit) {
+      k.classList.add("lit");
+      k.style.setProperty("--g", lit[0]);
+      if (lit[1] != null) k.style.setProperty("--o", lit[1]);
+      if (lit[2]) k.classList.add("pulse");
+      k.insertAdjacentHTML("beforeend", '<i class="ledbar"></i>');
+    }
+    const id = document.createElement("span"); id.className = "id"; id.textContent = ID[kind];
+    const lb = document.createElement("span"); lb.className = "lb"; lb.textContent = (on && m.labels[kind]) || "";
+    k.append(id, lb);
+    s.appendChild(k);
+    return s;
+  }
+
+  document.querySelectorAll(".device[data-mode]").forEach(dev => {
+    const m = MODES[dev.dataset.mode];
+    const g = document.createElement("div");
+    g.className = "grid";
+    LAYOUT.flat().forEach(kind => g.appendChild(slot(kind, m)));
+    dev.appendChild(g);
+    const silk = document.createElement("div");
+    silk.className = "silk"; silk.textContent = "ACID PLUM * >_<";
+    dev.appendChild(silk);
+  });
+})();
+</script>
+
+</body>
+</html>
