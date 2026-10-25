@@ -1,0 +1,1043 @@
+<title>Acid Plum Sound Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: synth-panel modules in a wrapping grid (oscillators, filter, envelopes, output),
+   the real Acid Plum drawn at the bottom as the bank picker. One committed dark look. */
+:root {
+  color-scheme: dark;
+  --ground: #110e18;      /* page */
+  --panel: #1a1624;       /* module face */
+  --panel-2: #221d2f;     /* inset controls */
+  --line: #3a3350;        /* module borders, grid */
+  --ink: #ebe7f6;         /* primary text */
+  --ink-2: #a39bbd;       /* labels */
+  --ink-3: #6f6889;       /* hints */
+  --plum: #8473e5;        /* device LED purple: selection, accents */
+  --plum-soft: #8473e533;
+  --signal: #73d4e5;      /* device LED cyan: audio signal, scope */
+  --signal-soft: #73d4e522;
+  --ember: #d4673b;       /* the device's orange key */
+  --ok: #7fd49a;
+  --warn: #e7c46a;
+  --bad: #ef7a7a;
+  --board: #0b0a0f;       /* device plate */
+  --key: #dfe6ef;         /* frosted key */
+  --f-display: "Saira Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r: 10px;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--ground); color: var(--ink); }
+body {
+  font-family: var(--f-display);
+  font-size: 15px;
+  line-height: 1.4;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 32px;
+}
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+
+.app { max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+
+/* ---------- top bar ---------- */
+.topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.brand { display: flex; align-items: baseline; gap: 10px; margin-right: auto; }
+.brand h1 { margin: 0; font-size: 1.35rem; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
+.brand span { color: var(--ink-3); font-family: var(--f-mono); font-size: .78rem; }
+.sound-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.field { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; min-width: 0; }
+select.field { padding-right: 28px; }
+input.name { width: 11.5rem; font-weight: 600; letter-spacing: .02em; }
+.btn {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
+  padding: 7px 12px; cursor: pointer; font-weight: 600; font-size: .85rem;
+  text-transform: uppercase; letter-spacing: .06em; white-space: nowrap;
+}
+.btn:hover { border-color: var(--plum); }
+.btn.primary { background: var(--plum); border-color: var(--plum); color: #fff; }
+.btn.primary:hover { filter: brightness(1.1); }
+.btn.ghost { background: transparent; }
+.btn.danger { border-color: var(--bad); color: var(--bad); }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+
+/* ---------- module grid ---------- */
+.grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 12px; }
+.mod { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.mod > header { display: flex; align-items: center; gap: 8px; }
+.mod h2 { margin: 0; font-size: .95rem; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; }
+.mod header .tag { margin-left: auto; font-family: var(--f-mono); font-size: .72rem; color: var(--ink-3); }
+.span-4 { grid-column: span 4; } .span-6 { grid-column: span 6; } .span-8 { grid-column: span 8; } .span-12 { grid-column: span 12; }
+@media (max-width: 1000px) { .span-4 { grid-column: span 6; } .span-8 { grid-column: span 12; } }
+@media (max-width: 680px) { .span-4, .span-6, .span-8 { grid-column: span 12; } }
+
+/* switch / segmented */
+.seg { display: inline-flex; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 2px; flex-wrap: wrap; }
+.seg button { background: transparent; border: 0; border-radius: 6px; padding: 5px 9px; cursor: pointer; font-size: .8rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-2); }
+.seg button[aria-pressed="true"] { background: var(--plum); color: #fff; }
+.toggle { display: inline-flex; align-items: center; gap: 6px; font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2); cursor: pointer; }
+.toggle input { accent-color: var(--plum); width: 16px; height: 16px; }
+
+/* sliders: label | track | value */
+.params { display: flex; flex-direction: column; gap: 6px; }
+.param { display: grid; grid-template-columns: 5.4rem minmax(0, 1fr) 4.9rem; align-items: center; gap: 8px; }
+.param label { font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2); }
+.param output { font-family: var(--f-mono); font-size: .78rem; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+.param.off { opacity: .35; }
+input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; background: transparent; cursor: pointer; }
+input[type="range"]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--plum) var(--fill, 50%), var(--panel-2) var(--fill, 50%)); border: 1px solid var(--line); }
+input[type="range"]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--panel-2); border: 1px solid var(--line); }
+input[type="range"]::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--plum); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5px; border-radius: 50%; background: var(--ink); border: 2px solid var(--plum); }
+input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--ink); border: 2px solid var(--plum); }
+
+canvas.viz { width: 100%; height: 108px; display: block; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; }
+canvas.viz.tall { height: 150px; }
+
+/* play strip */
+.play { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn.play-btn { background: var(--signal); border-color: var(--signal); color: #0b1418; min-width: 6.5rem; }
+.btn.play-btn[aria-pressed="true"] { background: var(--bad); border-color: var(--bad); color: #1a0b0b; }
+.note-pick { display: inline-flex; align-items: center; gap: 4px; font-family: var(--f-mono); }
+.note-pick .val { min-width: 2.6rem; text-align: center; font-weight: 500; }
+.note-pick .btn { padding: 6px 9px; }
+
+/* budget */
+.badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: .74rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; border: 1px solid currentColor; }
+.badge.light { color: var(--ok); } .badge.medium { color: var(--warn); } .badge.heavy { color: var(--bad); }
+.meter { display: flex; flex-direction: column; gap: 4px; }
+.meter .bar { position: relative; height: 10px; border-radius: 5px; background: var(--panel-2); border: 1px solid var(--line); overflow: hidden; }
+.meter .bar i { position: absolute; inset: 0 auto 0 0; background: var(--signal); }
+.meter .bar b { position: absolute; inset: 0 auto 0 0; background: var(--plum-soft); border-right: 1px dashed var(--plum); }
+.meter .bar.cpu { height: 14px; overflow: visible; }
+.meter .bar.cpu i { border-radius: 5px 0 0 5px; max-width: 100%; transition: width .15s ease; }
+.meter .bar.cpu i.ok { background: var(--ok); } .meter .bar.cpu i.warn { background: var(--warn); } .meter .bar.cpu i.bad { background: var(--bad); }
+.meter .bar .mark { position: absolute; top: -3px; bottom: -3px; width: 0; border-left: 2px dashed var(--ink-2, #ccc); }
+.costtab { width: 100%; border-collapse: collapse; font-family: var(--f-mono); font-size: .76rem; color: var(--ink-2, inherit); }
+.costtab td { padding: 3px 0; border-bottom: 1px solid var(--line); }
+.costtab td:last-child { text-align: right; }
+.costtab tr.total td { font-weight: 700; border-bottom: 0; color: var(--ink, inherit); }
+.tips { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: .82rem; }
+.tips li::marker { color: var(--plum); }
+.note.small { font-size: .74rem; color: var(--ink-3); }
+.key.bank .cost { font-family: var(--f-mono); font-size: .58rem; line-height: 1; }
+.key.bank .cost { font-weight: 700; } .key.bank .cost.ok { color: #23753d; } .key.bank .cost.warn { color: #8a6208; } .key.bank .cost.bad { color: #b02e2e; }
+.key.bank[aria-pressed="true"] .cost { color: inherit; }
+.meter .legend { display: flex; justify-content: space-between; gap: 8px; font-family: var(--f-mono); font-size: .72rem; color: var(--ink-3); flex-wrap: wrap; }
+.note { font-size: .82rem; color: var(--ink-2); margin: 0; max-width: 65ch; }
+.note code, .mono { font-family: var(--f-mono); font-size: .78rem; }
+
+/* ---------- device dock ---------- */
+.dock { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 760px) { .dock { grid-template-columns: minmax(0, 1fr); } }
+.device {
+  background: #000; border-radius: 22px; padding: 14px; width: 100%; max-width: 360px; margin: 0 auto;
+  box-shadow: inset 0 0 0 2px #1d1b24, 0 10px 30px #0008;
+}
+.plate { background: var(--board); border-radius: 12px; padding: 16px 16px 10px; display: flex; flex-direction: column; gap: 8px; position: relative; }
+.keys { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.slot { aspect-ratio: 1 / 1; max-width: 100%; position: relative; display: grid; place-items: center; }
+.key {
+  width: 100%; height: 100%; border-radius: 9px; border: 0; cursor: default;
+  background: linear-gradient(160deg, #eef3f8 0%, #cfd8e2 100%); color: #3b3f4b;
+  box-shadow: inset 0 -3px 0 #a9b4c288, inset 0 2px 0 #fff9;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  font-family: var(--f-display); padding: 4px; text-align: center;
+}
+.key.dim { opacity: .55; }
+.key.orange { background: linear-gradient(160deg, #e2774a, #b9532b); box-shadow: inset 0 -3px 0 #8c3a1c88, inset 0 2px 0 #ffd3bf66; color: #3d1607; }
+.key small { font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; opacity: .8; }
+.key.bank { cursor: pointer; transition: transform .08s ease, box-shadow .15s ease; }
+.key.bank:hover { transform: translateY(-1px); }
+.key.bank .id { font-weight: 700; font-size: .95rem; letter-spacing: .04em; }
+.key.bank .nm { font-size: .62rem; line-height: 1.1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.key.bank[aria-pressed="true"] {
+  background: radial-gradient(circle at 50% 70%, #b9adff 0%, var(--plum) 70%);
+  color: #fff; box-shadow: 0 0 18px var(--plum), inset 0 -3px 0 #4a3aa588;
+}
+.knob { width: 52%; aspect-ratio: 1; max-width: 100%; border-radius: 50%; background: repeating-conic-gradient(#d9dde3 0 6deg, #9aa1ab 6deg 12deg); box-shadow: 0 0 0 4px #6b6f77, 0 0 0 7px #3c3f45; }
+.stick { width: 74%; aspect-ratio: 1; max-width: 100%; border-radius: 18%; background: #4d4f55; display: grid; place-items: center; }
+.stick::after { content: ""; width: 72%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #3a3a3f, #111); box-shadow: 0 2px 4px #0009; }
+.logo { display: grid; place-items: center; font-weight: 700; font-style: italic; font-size: 1.4rem; color: #c9ccd3; letter-spacing: -.04em; }
+.silk { text-align: center; font-family: var(--f-mono); font-size: .72rem; color: #c9ccd3; padding-top: 4px; }
+.dock-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.target { font-size: 1.05rem; }
+.target strong { color: var(--plum); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.status { font-size: .84rem; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink-2); max-width: 70ch; }
+.status.ok { border-color: var(--ok); color: var(--ok); }
+.status.warn { border-color: var(--warn); color: var(--warn); }
+details { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 14px; }
+details summary { cursor: pointer; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; font-size: .85rem; }
+details .body { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; }
+.codebox { width: 100%; min-height: 220px; resize: vertical; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px; font-family: var(--f-mono); font-size: .74rem; color: var(--ink); white-space: pre; overflow: auto; }
+.tablewrap { overflow-x: auto; }
+table.proto { border-collapse: collapse; font-size: .8rem; min-width: 520px; }
+table.proto th, table.proto td { border-bottom: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
+table.proto th { color: var(--ink-2); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; font-size: .72rem; }
+table.proto td:first-child { font-family: var(--f-mono); white-space: nowrap; }
+.inline-confirm { display: inline-flex; gap: 6px; align-items: center; font-size: .82rem; color: var(--bad); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <div class="topbar">
+    <div class="brand"><h1>Acid Plum Sound Lab</h1><span>7 banks · AMY lite engine</span></div>
+    <div class="sound-bar">
+      <select id="libSelect" class="field" aria-label="Load a sound"></select>
+      <input id="soundName" class="field name" maxlength="15" aria-label="Sound name" spellcheck="false">
+      <button id="btnInit" class="btn ghost" title="Start from a plain sine">Init</button>
+      <button id="btnSave" class="btn">Save to my sounds</button>
+      <span id="deleteWrap"></span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- OSC 1 -->
+    <section class="mod span-4" aria-labelledby="h-osc1">
+      <header><h2 id="h-osc1">Osc 1</h2><span class="tag" id="osc1Tag"></span></header>
+      <div class="seg" id="osc1Wave" role="group" aria-label="Osc 1 waveform"></div>
+      <div class="params" id="osc1Params"></div>
+    </section>
+
+    <!-- OSC 2 -->
+    <section class="mod span-4" aria-labelledby="h-osc2">
+      <header><h2 id="h-osc2">Osc 2</h2>
+        <label class="toggle" style="margin-left:auto"><input type="checkbox" id="osc2On"> On</label>
+      </header>
+      <div class="seg" id="osc2Wave" role="group" aria-label="Osc 2 waveform"></div>
+      <div class="params" id="osc2Params"></div>
+    </section>
+
+    <!-- OUTPUT / play / scope -->
+    <section class="mod span-4" aria-labelledby="h-out">
+      <header><h2 id="h-out">Play &amp; scope</h2><span class="tag" id="scopeTag">preview</span></header>
+      <canvas class="viz" id="scope" aria-label="Signal display"></canvas>
+      <div class="play">
+        <button class="btn play-btn" id="btnPlay" aria-pressed="false">▶ Play</button>
+        <div class="note-pick" aria-label="Note">
+          <button class="btn ghost" id="noteDown" aria-label="Lower note">−</button>
+          <span class="val" id="noteVal">C4</span>
+          <button class="btn ghost" id="noteUp" aria-label="Higher note">+</button>
+        </div>
+        <div class="seg" id="playMode" role="group" aria-label="Play a note or a chord">
+          <button data-v="note" aria-pressed="true">Note</button>
+          <button data-v="chord" aria-pressed="false">Chord</button>
+        </div>
+        <button class="btn ghost" id="btnRetrig" title="Play the attack again">Retrigger</button>
+      </div>
+      <div class="params" id="outParams"></div>
+      <p class="note">The preview runs in your browser and stays close to the device, but the board's AMY engine renders the final sound.</p>
+    </section>
+
+    <!-- FILTER -->
+    <section class="mod span-4" aria-labelledby="h-flt">
+      <header><h2 id="h-flt">Filter</h2><span class="tag" id="fltTag"></span></header>
+      <div class="seg" id="fltType" role="group" aria-label="Filter type">
+        <button data-v="0">Off</button><button data-v="1">Low-pass</button>
+      </div>
+      <canvas class="viz" id="fltViz" aria-label="Filter response"></canvas>
+      <div class="params" id="fltParams"></div>
+    </section>
+
+    <!-- AMP ENV -->
+    <section class="mod span-4" aria-labelledby="h-aenv">
+      <header><h2 id="h-aenv">Amp envelope</h2><span class="tag">volume over time</span></header>
+      <canvas class="viz" id="ampViz" aria-label="Amplitude envelope"></canvas>
+      <div class="params" id="ampParams"></div>
+    </section>
+
+    <!-- FILTER ENV -->
+    <section class="mod span-4" aria-labelledby="h-fenv">
+      <header><h2 id="h-fenv">Filter envelope</h2><span class="tag" id="fenvTag"></span></header>
+      <canvas class="viz" id="fenvViz" aria-label="Filter envelope"></canvas>
+      <div class="params" id="fenvParams"></div>
+    </section>
+
+    <!-- BUDGET -->
+    <section class="mod span-12" aria-labelledby="h-budget">
+      <header><h2 id="h-budget">CPU cost on the device</h2><span class="badge" id="costBadge">light</span></header>
+      <div class="grid" style="gap:16px">
+        <div class="span-6" style="display:flex;flex-direction:column;gap:10px;min-width:0">
+          <p class="note" id="costLine"></p>
+          <div class="meter" aria-label="Render load for a 24-note jam">
+            <div class="bar cpu"><i id="mJam"></i><span class="mark" style="left:80%"></span></div>
+            <div class="legend"><span>0 %</span><span id="mJamLbl"></span><span>80 % safe · 100 % notes drop</span></div>
+          </div>
+          <table class="costtab" id="costTab"></table>
+        </div>
+        <div class="span-6" style="display:flex;flex-direction:column;gap:10px;min-width:0">
+          <p class="note" id="costCompare"></p>
+          <ul class="tips" id="costTips"></ul>
+          <p class="note small">Costs measured on the device with the <code>B</code> benchmark (run 1, 250&nbsp;MHz, README “Performance register”): per oscillator Sine 1.4, Tri 1.2, Saw 1.85, Pulse 3.0 %, plus 1.0 % per oscillator when the filter is on; idle 2 %. The filter runs on every oscillator, so a 2-oscillator filtered sound pays it twice. Noise isn't measured yet (estimated). Typical jam: 4 loop layers of chord + melody plus a live chord, about <b>24 notes</b>; a loop keeps the sound it was recorded with, so the jam can mix banks.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- DEVICE DOCK -->
+  <section class="mod span-12" aria-labelledby="h-dev">
+    <header><h2 id="h-dev">Device banks</h2><span class="tag">tap a bank key</span></header>
+    <div class="dock">
+      <div class="device" aria-label="Acid Plum">
+        <div class="plate">
+          <div class="keys" id="deviceKeys"></div>
+          <div class="silk">Acid Plum * &gt;_&lt;</div>
+        </div>
+      </div>
+      <div class="dock-side">
+        <div class="target">Target: <strong id="tgtId">B1</strong> · now holds <span id="tgtName"></span></div>
+        <div class="row">
+          <button class="btn" id="btnAssign">Assign to B1</button>
+          <button class="btn primary" id="btnSend">Send to device</button>
+          <button class="btn ghost" id="btnLoadBank">Edit B1's sound</button>
+        </div>
+        <div class="status" id="status" role="status">Shape a sound, pick a bank, then assign or send it. Banks show what this app last assigned (factory sounds at first).</div>
+        <div class="row">
+          <button class="btn ghost" id="btnCode">Show sounds.h code</button>
+          <button class="btn ghost" id="btnReset">Reset banks to factory</button>
+          <button class="btn ghost" id="btnFactoryDev">Restore factory banks on device</button>
+          <span id="resetWrap"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <details id="codeDetails">
+    <summary>sounds.h code for all 7 banks</summary>
+    <div class="body">
+      <p class="note">To make these the device's <b>factory</b> sounds, paste this table into <code>sounds.h</code> (replace the whole <code>FACTORY_SOUNDS[]</code> block) and upload the sketch. Banks you sent over USB stay on the device and take priority; use <b>Restore factory banks on device</b> (or hold PAR1 at power-up) to switch back to the factory table. Firmware older than V1.0.7 calls this table <code>SOUNDS[]</code>.</p>
+      <div class="row"><button class="btn" id="btnCopy">Copy code</button><span class="note" id="copyMsg"></span></div>
+      <textarea class="codebox" id="codeBox" readonly spellcheck="false" aria-label="sounds.h code"></textarea>
+    </div>
+  </details>
+
+  <details>
+    <summary>USB message format (for the firmware)</summary>
+    <div class="body">
+      <p class="note">"Send to device" sends one SysEx message per bank over Web MIDI to the port named "Acid Plum" (firmware V1.0.7 or later, built with Tools → USB Stack → Adafruit TinyUSB). The device replies <code>F0 7D 41 50 10 01 cmd bank status detail F7</code> (status 0 = accepted). "Restore factory banks on device" sends <code>F0 7D 41 50 02 01 01 F7</code>. Envelopes travel as attack / decay / sustain / release and the device converts them to its 4 points: <code>t0 = A</code>, <code>t1 = A + D</code>, <code>t2 = t1 + 1</code>, <code>t3 = R</code>, levels <code>1, S, S, 0</code>.</p>
+      <div class="tablewrap"><table class="proto">
+        <thead><tr><th>Bytes</th><th>Field</th><th>Encoding</th></tr></thead>
+        <tbody>
+          <tr><td>F0 7D 41 50</td><td>Start, non-commercial ID, "AP"</td><td>fixed</td></tr>
+          <tr><td>01</td><td>Command: set sound</td><td>fixed</td></tr>
+          <tr><td>01</td><td>Protocol version</td><td>fixed</td></tr>
+          <tr><td>bank</td><td>Target bank</td><td>0–6 (B1–B7)</td></tr>
+          <tr><td>name ×15</td><td>Sound name</td><td>ASCII 32–126, padded with 0</td></tr>
+          <tr><td>trim</td><td>Level trim</td><td>14-bit, value × 1000</td></tr>
+          <tr><td>nOsc</td><td>Oscillators</td><td>1 or 2</td></tr>
+          <tr><td>osc ×2</td><td>wave, duty, detune, octave, level</td><td>wave 1 byte (AMY id); duty ×1000; detune cents + 8192; octave + 8; level ×1000 (14-bit each, octave 1 byte)</td></tr>
+          <tr><td>filter</td><td>type, resonance, cutoff, env amount</td><td>type 1 byte; resonance ×100; cutoff Hz; env octaves ×100 (14-bit)</td></tr>
+          <tr><td>amp env</td><td>A, D, S, R</td><td>A/D/R ms, S ×1000 (14-bit)</td></tr>
+          <tr><td>filter env</td><td>A, D, S, R</td><td>same as amp env</td></tr>
+          <tr><td>sum</td><td>Checksum</td><td>sum of all bytes after the command, & 0x7F</td></tr>
+          <tr><td>F7</td><td>End</td><td>fixed</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">14-bit values are two bytes, high 7 bits first. Last message sent or prepared:</p>
+      <div class="codebox" id="sysexBox" style="min-height:60px;white-space:pre-wrap;word-break:break-all">—</div>
+    </div>
+  </details>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+// ================= sound model (mirrors sounds.h) =================
+const WAVES = [
+  { id: 0, key: "SINE", label: "Sine" },
+  { id: 4, key: "TRIANGLE", label: "Tri" },
+  { id: 2, key: "SAW_DOWN", label: "Saw" },
+  { id: 1, key: "PULSE", label: "Pulse" },
+  { id: 5, key: "NOISE", label: "Noise" },
+];
+const waveById = id => WAVES.find(w => w.id === id) || WAVES[0];
+const osc = (wave, duty, cents, octave, level) => ({ wave, duty, cents, octave, level });
+const env = (a, d, s, r) => ({ a, d, s, r });
+
+// Factory presets: the 7 sounds in the current firmware, converted to A/D/S/R
+const FACTORY = [
+  { name: "Sine", trim: 1.0, nOsc: 1, osc: [osc(0, .5, 0, 0, 1), osc(0, .5, 0, 0, 1)], filter: 0, res: .7, cutoff: 2000, envOct: 0, amp: env(1, 1, 1, 5), fenv: env(1, 1, 0, 5) },
+  { name: "Lo-fi keys", trim: 1.0, nOsc: 1, osc: [osc(4, .5, 0, 0, 1), osc(0, .5, 0, 0, 1)], filter: 1, res: .7, cutoff: 2500, envOct: 0, amp: env(2, 1198, .3, 250), fenv: env(1, 1, 0, 5) },
+  { name: "Chill pad", trim: .7, nOsc: 2, osc: [osc(2, .5, 7, 0, .5), osc(2, .5, -7, 0, .5)], filter: 1, res: .8, cutoff: 1200, envOct: 0, amp: env(400, 1, 1, 800), fenv: env(1, 1, 0, 5) },
+  { name: "Techno stab", trim: .7, nOsc: 1, osc: [osc(1, .3, 0, 0, 1), osc(0, .5, 0, 0, 1)], filter: 1, res: 6, cutoff: 400, envOct: 3, amp: env(2, 248, .2, 120), fenv: env(1, 149, 0, 100) },
+  { name: "Chiptune", trim: .5, nOsc: 1, osc: [osc(1, .125, 0, 0, 1), osc(0, .5, 0, 0, 1)], filter: 0, res: .7, cutoff: 2000, envOct: 0, amp: env(1, 1, 1, 30), fenv: env(1, 1, 0, 5) },
+  { name: "Strong", trim: .6, nOsc: 2, osc: [osc(2, .5, 5, 0, .5), osc(2, .5, -5, 0, .5)], filter: 1, res: 1, cutoff: 2000, envOct: 1, amp: env(30, 170, .9, 200), fenv: env(60, 340, 0, 200) },
+  { name: "Rock/punk", trim: .7, nOsc: 2, osc: [osc(1, .25, 0, 0, .6), osc(1, .5, 0, -1, .4)], filter: 1, res: 2, cutoff: 4000, envOct: 0, amp: env(2, 398, .4, 100), fenv: env(1, 1, 0, 5) },
+];
+const clone = o => JSON.parse(JSON.stringify(o));
+const INIT = () => ({ name: "New sound", trim: 1, nOsc: 1, osc: [osc(0, .5, 0, 0, 1), osc(2, .5, 0, 0, .5)], filter: 0, res: .7, cutoff: 2000, envOct: 0, amp: env(2, 200, .8, 150), fenv: env(1, 200, 0, 100) });
+
+// ================= storage (per-browser convenience) =================
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+let mySounds = store.get("ap.mySounds", []);
+let banks = store.get("ap.banks", null) || FACTORY.map(clone);
+let snd = clone(store.get("ap.current", null) || FACTORY[3]);
+let targetBank = store.get("ap.target", 0);
+const persist = () => { store.set("ap.mySounds", mySounds); store.set("ap.banks", banks); store.set("ap.current", snd); store.set("ap.target", targetBank); };
+
+// ================= helpers =================
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const midiHz = m => 440 * Math.pow(2, (m - 69) / 12);
+const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const noteName = m => NOTE_NAMES[m % 12] + (Math.floor(m / 12) - 1);
+const fmtMs = v => v >= 1000 ? (v / 1000).toFixed(2) + " s" : Math.round(v) + " ms";
+const fmtHz = v => v >= 1000 ? (v / 1000).toFixed(2) + " kHz" : Math.round(v) + " Hz";
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+// ================= slider factory =================
+// spec: { label, min, max, step, log, get(), set(v), fmt(v), onChange? }
+function makeParam(container, spec) {
+  const row = document.createElement("div"); row.className = "param";
+  const id = "p_" + container.id + "_" + spec.label.replace(/\W/g, "");
+  row.innerHTML = `<label for="${id}">${spec.label}</label><input type="range" id="${id}" min="0" max="1000" step="1"><output for="${id}"></output>`;
+  container.appendChild(row);
+  const input = row.querySelector("input"), out = row.querySelector("output");
+  const toPos = v => spec.log ? Math.log(v / spec.min) / Math.log(spec.max / spec.min) * 1000 : (v - spec.min) / (spec.max - spec.min) * 1000;
+  const fromPos = p => {
+    let v = spec.log ? spec.min * Math.pow(spec.max / spec.min, p / 1000) : spec.min + (spec.max - spec.min) * p / 1000;
+    if (spec.step) v = Math.round(v / spec.step) * spec.step;
+    return clamp(v, spec.min, spec.max);
+  };
+  const paint = () => { const v = spec.get(); input.value = Math.round(toPos(v)); out.textContent = spec.fmt(v); input.style.setProperty("--fill", (input.value / 10) + "%"); };
+  input.addEventListener("input", () => { spec.set(fromPos(+input.value)); paint(); onEdit(spec.live !== false ? "live" : "rebuild"); });
+  input.addEventListener("change", () => { if (spec.retrig) retriggerIfPlaying(); persist(); });
+  const p = { row, paint, setEnabled(on) { row.classList.toggle("off", !on); input.disabled = !on; } };
+  params.push(p);
+  return p;
+}
+const params = [];
+
+function makeSeg(container, items, get, set) {
+  container.innerHTML = "";
+  for (const it of items) {
+    const b = document.createElement("button"); b.type = "button"; b.dataset.v = it.v; b.textContent = it.label;
+    b.addEventListener("click", () => { set(it.v); paintAll(); onEdit("rebuild"); persist(); });
+    container.appendChild(b);
+  }
+  segs.push(() => { for (const b of container.children) b.setAttribute("aria-pressed", String(String(get()) === b.dataset.v)); });
+}
+const segs = [];
+
+// ================= build controls =================
+function buildOscControls(i) {
+  const wrap = $("osc" + (i + 1) + "Params");
+  makeSeg($("osc" + (i + 1) + "Wave"), WAVES.map(w => ({ v: w.id, label: w.label })), () => snd.osc[i].wave, v => snd.osc[i].wave = +v);
+  const duty = makeParam(wrap, { label: "Width", min: .05, max: .5, step: .005, get: () => snd.osc[i].duty, set: v => snd.osc[i].duty = v, fmt: v => Math.round(v * 100) + " %" });
+  makeParam(wrap, { label: "Detune", min: -50, max: 50, step: 1, get: () => snd.osc[i].cents, set: v => snd.osc[i].cents = v, fmt: v => (v > 0 ? "+" : "") + v + " ct" });
+  makeParam(wrap, { label: "Octave", min: -1, max: 1, step: 1, get: () => snd.osc[i].octave, set: v => snd.osc[i].octave = v, fmt: v => (v > 0 ? "+" : "") + v });
+  makeParam(wrap, { label: "Level", min: 0, max: 1, step: .01, get: () => snd.osc[i].level, set: v => snd.osc[i].level = v, fmt: v => Math.round(v * 100) + " %" });
+  return duty;
+}
+const duty1 = buildOscControls(0);
+const duty2 = buildOscControls(1);
+$("osc2On").addEventListener("change", e => { snd.nOsc = e.target.checked ? 2 : 1; paintAll(); onEdit("rebuild"); persist(); });
+
+makeSeg($("fltType"), [{ v: 0, label: "Off" }, { v: 1, label: "Low-pass" }], () => snd.filter, v => snd.filter = +v);
+const pCut = makeParam($("fltParams"), { label: "Cutoff", min: 50, max: 12000, log: true, step: 1, get: () => snd.cutoff, set: v => snd.cutoff = v, fmt: fmtHz });
+const pRes = makeParam($("fltParams"), { label: "Resonance", min: .5, max: 12, step: .1, get: () => snd.res, set: v => snd.res = v, fmt: v => "Q " + v.toFixed(1) });
+const pEnvAmt = makeParam($("fltParams"), { label: "Env amount", min: 0, max: 4, step: .05, get: () => snd.envOct, set: v => snd.envOct = v, fmt: v => v.toFixed(2) + " oct" });
+
+const envSpec = (key, which, extra = {}) => Object.assign({ retrig: true, live: true }, extra, which);
+function buildEnv(container, key) {
+  return [
+    makeParam(container, envSpec(key, { label: "Attack", min: 1, max: 3000, log: true, step: 1, get: () => snd[key].a, set: v => snd[key].a = v, fmt: fmtMs })),
+    makeParam(container, envSpec(key, { label: "Decay", min: 1, max: 3000, log: true, step: 1, get: () => snd[key].d, set: v => snd[key].d = v, fmt: fmtMs })),
+    makeParam(container, envSpec(key, { label: "Sustain", min: 0, max: 1, step: .01, get: () => snd[key].s, set: v => snd[key].s = v, fmt: v => Math.round(v * 100) + " %" })),
+    makeParam(container, envSpec(key, { label: "Release", min: 1, max: 3000, log: true, step: 1, get: () => snd[key].r, set: v => snd[key].r = v, fmt: fmtMs })),
+  ];
+}
+buildEnv($("ampParams"), "amp");
+const fenvParams = buildEnv($("fenvParams"), "fenv");
+makeParam($("outParams"), { label: "Level trim", min: .1, max: 1, step: .01, get: () => snd.trim, set: v => snd.trim = v, fmt: v => Math.round(v * 100) + " %" });
+
+// ================= device-format conversion =================
+const toPoints = e => { const t0 = Math.max(1, Math.round(e.a)); const t1 = t0 + Math.max(1, Math.round(e.d)); return { t: [t0, t1, t1 + 1, Math.max(1, Math.round(e.r))], v: [1, +e.s.toFixed(3), +e.s.toFixed(3), 0] }; };
+const f = (v, d = 3) => { let s = (+v).toFixed(d).replace(/0+$/, "").replace(/\.$/, ""); if (!s.includes(".")) s += ".0"; return s + "f"; };
+const semis = c => f(c / 100, 3);
+function soundToC(s, idx) {
+  const o = s.osc.map(x => `{ ${waveById(x.wave).key}, ${f(x.duty)}, ${x.cents >= 0 ? "+" : ""}${semis(x.cents)}, ${x.octave}, ${f(x.level, 2)} }`);
+  const a = toPoints(s.amp), fe = toPoints(s.fenv);
+  const name = s.name.replace(/[^\x20-\x7e]/g, "").replace(/["\\]/g, "").slice(0, 15) || "Sound";
+  return `    // B${idx + 1} — ${name}\n` +
+    `    { "${name}", ${f(s.trim, 2)},\n` +
+    `      ${s.nOsc}, { ${o[0]}, ${s.nOsc > 1 ? o[1] : "{}"} },\n` +
+    `      ${s.filter ? "FILTER_LPF" : "FILTER_NONE"}, ${f(s.res, 2)}, ${f(Math.round(s.cutoff), 1)}, ${f(s.envOct, 2)},\n` +
+    `      { ${a.t.join(", ")} }, { ${a.v.map(v => f(v, 3)).join(", ")} },\n` +
+    `      { ${fe.t.join(", ")} }, { ${fe.v.map(v => f(v, 3)).join(", ")} } },`;
+}
+function banksToC() {
+  return "// Generated by Acid Plum Sound Lab — paste over the FACTORY_SOUNDS[] table in sounds.h\n" +
+    "static constexpr SoundDef FACTORY_SOUNDS[NUM_SOUNDS] = {\n" + banks.map(soundToC).join("\n\n") + "\n};\n";
+}
+
+// ================= SysEx =================
+function sysexFor(s, bank) {
+  const out = [0xF0, 0x7D, 0x41, 0x50, 0x01];
+  const body = [];
+  const u7 = v => body.push(clamp(Math.round(v), 0, 127));
+  const u14 = v => { const x = clamp(Math.round(v), 0, 16383); body.push((x >> 7) & 0x7F, x & 0x7F); };
+  u7(1); u7(bank);
+  const nm = s.name.replace(/[^\x20-\x7e]/g, "").slice(0, 15);
+  for (let i = 0; i < 15; i++) u7(i < nm.length ? nm.charCodeAt(i) : 0);
+  u14(s.trim * 1000); u7(s.nOsc);
+  for (const o of s.osc) { u7(o.wave); u14(o.duty * 1000); u14(o.cents + 8192); u7(o.octave + 8); u14(o.level * 1000); }
+  u7(s.filter); u14(s.res * 100); u14(s.cutoff); u14(s.envOct * 100);
+  for (const e of [s.amp, s.fenv]) { u14(e.a); u14(e.d); u14(e.s * 1000); u14(e.r); }
+  const sum = body.reduce((a, b) => a + b, 0) & 0x7F;
+  return Uint8Array.from([...out, ...body, sum, 0xF7]);
+}
+const hex = bytes => Array.from(bytes, b => b.toString(16).padStart(2, "0").toUpperCase()).join(" ");
+
+// ================= audio preview (Web Audio approximation of AMY) =================
+let ctx = null, master = null, analyser = null, noiseBuf = null;
+let voices = [];            // active notes
+let playing = false, playNote = 60, playMode = "note";
+let structKey = "";
+const CHORD = [0, 4, 7];
+
+function ensureAudio() {
+  if (ctx) return;
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  master = ctx.createGain(); master.gain.value = .8;
+  analyser = ctx.createAnalyser(); analyser.fftSize = 2048;
+  master.connect(analyser); analyser.connect(ctx.destination);
+  noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+  const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+}
+const pulseCache = new Map();
+function pulseWave(duty) {
+  const k = duty.toFixed(3); if (pulseCache.has(k)) return pulseCache.get(k);
+  const N = 96, re = new Float32Array(N), im = new Float32Array(N);
+  for (let n = 1; n < N; n++) re[n] = 2 / (n * Math.PI) * Math.sin(Math.PI * n * duty);
+  const w = ctx.createPeriodicWave(re, im); pulseCache.set(k, w); return w;
+}
+const loudness = m => m >= 60 ? 1 : Math.pow(10, Math.min(6, 2 * (60 - m) / 12) / 20);
+const qDb = q => 20 * Math.log10(Math.max(.5, q));       // AMY Q -> Web Audio low-pass Q (dB)
+const structOf = s => s.nOsc + "|" + s.filter + "|" + s.osc.slice(0, s.nOsc).map(o => o.wave === 5 ? "n" : "t").join("");
+
+function makeSource(o) {
+  if (o.wave === 5) { const n = ctx.createBufferSource(); n.buffer = noiseBuf; n.loop = true; return n; }
+  const n = ctx.createOscillator(); applyWave(n, o); return n;
+}
+function applyWave(node, o) {
+  if (!node.frequency) return;
+  if (o.wave === 1) node.setPeriodicWave(pulseWave(o.duty));
+  else node.type = o.wave === 0 ? "sine" : o.wave === 4 ? "triangle" : "sawtooth";
+}
+
+function startVoice(midi, vel, at) {
+  const s = snd, t = at;
+  const amp = ctx.createGain(); amp.gain.value = 0;
+  let filter = null, head = amp;
+  if (s.filter) { filter = ctx.createBiquadFilter(); filter.type = "lowpass"; filter.Q.value = qDb(s.res); filter.connect(amp); head = filter; }
+  amp.connect(master);
+  const srcs = [];
+  for (let i = 0; i < s.nOsc; i++) {
+    const o = s.osc[i], src = makeSource(o), g = ctx.createGain();
+    g.gain.value = o.level * s.trim * vel * loudness(midi);
+    if (src.frequency) src.frequency.value = midiHz(midi + 12 * o.octave + o.cents / 100);
+    src.connect(g); g.connect(head); src.start(t);
+    srcs.push({ src, g });
+  }
+  const v = { midi, vel, amp, filter, srcs };
+  envAttack(v, t);
+  return v;
+}
+// envelopes follow the device: linear segments, peak 1, then decay to sustain
+function envAttack(v, t) {
+  const e = snd.amp, g = v.amp.gain;
+  g.cancelScheduledValues(t); g.setValueAtTime(0.0001, t);
+  g.linearRampToValueAtTime(1, t + e.a / 1000);
+  g.linearRampToValueAtTime(Math.max(0, e.s), t + (e.a + e.d) / 1000);
+  if (v.filter) {
+    const fq = v.filter.frequency, fe = snd.fenv, base = snd.cutoff, top = fHz(1);
+    fq.cancelScheduledValues(t); fq.setValueAtTime(base, t);
+    if (snd.envOct > 0) { fq.exponentialRampToValueAtTime(top, t + fe.a / 1000); fq.exponentialRampToValueAtTime(fHz(fe.s), t + (fe.a + fe.d) / 1000); }
+  }
+}
+const fHz = level => clamp(snd.cutoff * Math.pow(2, snd.envOct * level), 20, 18000);
+
+function releaseVoice(v, t) {
+  const r = Math.max(.001, snd.amp.r / 1000), g = v.amp.gain;
+  g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(0, t + r);
+  if (v.filter && snd.envOct > 0) { const fq = v.filter.frequency; fq.cancelScheduledValues(t); fq.setValueAtTime(fq.value, t); fq.exponentialRampToValueAtTime(clamp(snd.cutoff, 20, 18000), t + Math.max(.001, snd.fenv.r / 1000)); }
+  for (const s of v.srcs) s.src.stop(t + r + .05);
+}
+function notesNow() {
+  return playMode === "chord" ? CHORD.map(i => ({ m: playNote + i, vel: .2 })) : [{ m: playNote, vel: .5 }];
+}
+function startAll() {
+  const t = ctx.currentTime + .005;
+  voices = notesNow().map(n => startVoice(n.m, n.vel, t));
+  structKey = structOf(snd);
+}
+function stopAll(fast) {
+  const t = ctx.currentTime;
+  for (const v of voices) {
+    if (fast) { const g = v.amp.gain; g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(0, t + .015); v.srcs.forEach(s => s.src.stop(t + .03)); }
+    else releaseVoice(v, t);
+  }
+  voices = [];
+}
+function retriggerIfPlaying() { if (playing) { stopAll(true); startAll(); } }
+
+// apply edits to sounding notes without restarting them when possible
+function liveUpdate() {
+  if (!playing) return;
+  if (structOf(snd) !== structKey) { stopAll(true); startAll(); return; }
+  const t = ctx.currentTime;
+  for (const v of voices) {
+    v.srcs.forEach((s, i) => {
+      const o = snd.osc[i];
+      if (s.src.frequency) { applyWave(s.src, o); s.src.frequency.setTargetAtTime(midiHz(v.midi + 12 * o.octave + o.cents / 100), t, .01); }
+      s.g.gain.setTargetAtTime(o.level * snd.trim * v.vel * loudness(v.midi), t, .015);
+    });
+    if (v.filter) { v.filter.Q.setTargetAtTime(qDb(snd.res), t, .015); v.filter.frequency.cancelScheduledValues(t); v.filter.frequency.setTargetAtTime(fHz(snd.envOct > 0 ? snd.fenv.s : 0), t, .02); }
+    v.amp.gain.cancelScheduledValues(t); v.amp.gain.setTargetAtTime(Math.max(0, snd.amp.s), t, .03);
+  }
+}
+
+// ================= visuals =================
+function sizeCanvas(c) {
+  const r = c.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = Math.max(10, Math.round(r.width * dpr)), h = Math.max(10, Math.round(r.height * dpr));
+  if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+  const g = c.getContext("2d"); g.setTransform(1, 0, 0, 1, 0, 0); return { g, w, h, dpr };
+}
+function gridLines(g, w, h, dpr, cols = 8, rows = 4) {
+  g.strokeStyle = css("--line"); g.globalAlpha = .45; g.lineWidth = 1;
+  g.beginPath();
+  for (let i = 1; i < cols; i++) { const x = Math.round(w * i / cols) + .5; g.moveTo(x, 0); g.lineTo(x, h); }
+  for (let i = 1; i < rows; i++) { const y = Math.round(h * i / rows) + .5; g.moveTo(0, y); g.lineTo(w, y); }
+  g.stroke(); g.globalAlpha = 1;
+}
+function label(g, txt, x, y, dpr, color, align = "left") {
+  g.fillStyle = color || css("--ink-3"); g.font = `${10 * dpr}px "IBM Plex Mono", monospace`; g.textAlign = align; g.fillText(txt, x, y);
+}
+
+function drawEnv(canvasId, e, opts = {}) {
+  const c = $(canvasId), { g, w, h, dpr } = sizeCanvas(c);
+  g.clearRect(0, 0, w, h); gridLines(g, w, h, dpr);
+  const hold = Math.max(150, (e.a + e.d) * .35), total = e.a + e.d + hold + e.r;
+  const pad = 8 * dpr, top = 14 * dpr, bot = h - 16 * dpr;
+  const X = ms => pad + (w - 2 * pad) * ms / total, Y = v => bot - (bot - top) * v;
+  const pts = [[0, 0], [e.a, 1], [e.a + e.d, e.s], [e.a + e.d + hold, e.s], [total, 0]];
+  const col = opts.dim ? css("--ink-3") : (opts.color || css("--plum"));
+  g.beginPath(); pts.forEach(([t, v], i) => i ? g.lineTo(X(t), Y(v)) : g.moveTo(X(t), Y(v)));
+  g.lineTo(X(total), bot); g.lineTo(X(0), bot); g.closePath();
+  g.fillStyle = opts.dim ? "transparent" : (opts.fill || css("--plum-soft")); g.fill();
+  g.beginPath(); pts.forEach(([t, v], i) => i ? g.lineTo(X(t), Y(v)) : g.moveTo(X(t), Y(v)));
+  g.strokeStyle = col; g.lineWidth = 2 * dpr; g.stroke();
+  g.fillStyle = css("--ink");
+  [pts[1], pts[2], pts[3]].forEach(([t, v]) => { g.beginPath(); g.arc(X(t), Y(v), 3.2 * dpr, 0, Math.PI * 2); g.fill(); });
+  // key-up marker
+  g.setLineDash([3 * dpr, 3 * dpr]); g.strokeStyle = css("--ink-3"); g.lineWidth = 1 * dpr;
+  g.beginPath(); g.moveTo(X(e.a + e.d + hold), top - 4 * dpr); g.lineTo(X(e.a + e.d + hold), bot); g.stroke(); g.setLineDash([]);
+  label(g, "A " + fmtMs(e.a), pad, h - 4 * dpr, dpr);
+  label(g, "key up", X(e.a + e.d + hold) + 3 * dpr, bot - 5 * dpr, dpr);
+  label(g, "R " + fmtMs(e.r), w - pad, h - 4 * dpr, dpr, null, "right");
+  if (opts.topLabel) label(g, opts.topLabel, w - pad, top - 2 * dpr, dpr, css("--ink-2"), "right");
+}
+
+let respCtx = null, respFilter = null;
+function drawFilter() {
+  const c = $("fltViz"), { g, w, h, dpr } = sizeCanvas(c);
+  g.clearRect(0, 0, w, h); gridLines(g, w, h, dpr, 10, 4);
+  const fMin = 20, fMax = 20000, dbTop = 24, dbBot = -36, pad = 4 * dpr;
+  const X = fr => pad + (w - 2 * pad) * Math.log(fr / fMin) / Math.log(fMax / fMin);
+  const Y = db => (h - 14 * dpr) * (dbTop - db) / (dbTop - dbBot) + 2 * dpr;
+  // decade labels
+  [100, 1000, 10000].forEach(fr => label(g, fr >= 1000 ? fr / 1000 + "k" : fr, X(fr) + 2 * dpr, h - 3 * dpr, dpr));
+  if (!snd.filter) {
+    g.strokeStyle = css("--ink-3"); g.lineWidth = 2 * dpr; g.beginPath(); g.moveTo(0, Y(0)); g.lineTo(w, Y(0)); g.stroke();
+    label(g, "filter off: full brightness", w / 2, Y(0) - 8 * dpr, dpr, css("--ink-2"), "center");
+    return;
+  }
+  if (!respCtx) { try { respCtx = new OfflineAudioContext(1, 128, 44100); respFilter = respCtx.createBiquadFilter(); respFilter.type = "lowpass"; } catch { return; } }
+  const N = 240, fr = new Float32Array(N), mag = new Float32Array(N), ph = new Float32Array(N);
+  for (let i = 0; i < N; i++) fr[i] = fMin * Math.pow(fMax / fMin, i / (N - 1));
+  const curve = (cut, color, fillA, dash) => {
+    respFilter.frequency.value = cut; respFilter.Q.value = qDb(snd.res);
+    respFilter.getFrequencyResponse(fr, mag, ph);
+    g.beginPath();
+    for (let i = 0; i < N; i++) { const db = clamp(20 * Math.log10(mag[i] + 1e-9), dbBot, dbTop); i ? g.lineTo(X(fr[i]), Y(db)) : g.moveTo(X(fr[i]), Y(db)); }
+    if (fillA) { g.lineTo(X(fMax), h); g.lineTo(X(fMin), h); g.closePath(); g.fillStyle = fillA; g.fill(); }
+    g.beginPath();
+    for (let i = 0; i < N; i++) { const db = clamp(20 * Math.log10(mag[i] + 1e-9), dbBot, dbTop); i ? g.lineTo(X(fr[i]), Y(db)) : g.moveTo(X(fr[i]), Y(db)); }
+    g.setLineDash(dash ? [4 * dpr, 4 * dpr] : []); g.strokeStyle = color; g.lineWidth = 2 * dpr; g.stroke(); g.setLineDash([]);
+  };
+  if (snd.envOct > 0) curve(fHz(1), css("--ink-3"), null, true);
+  curve(clamp(snd.cutoff, 20, 18000), css("--plum"), css("--plum-soft"), false);
+  label(g, "cutoff " + fmtHz(snd.cutoff), w - pad, 12 * dpr, dpr, css("--ink-2"), "right");
+  if (snd.envOct > 0) label(g, "env opens to " + fmtHz(fHz(1)), w - pad, 24 * dpr, dpr, css("--ink-3"), "right");
+}
+
+function waveSample(o, ph) {
+  const p = ph - Math.floor(ph);
+  switch (o.wave) {
+    case 0: return Math.sin(2 * Math.PI * p);
+    case 4: return 1 - 4 * Math.abs(p - .5);
+    case 2: return 1 - 2 * p;
+    case 1: return p < o.duty ? 1 : -1;
+    default: return Math.random() * 2 - 1;
+  }
+}
+function drawScope() {
+  const c = $("scope"), { g, w, h, dpr } = sizeCanvas(c);
+  g.clearRect(0, 0, w, h); gridLines(g, w, h, dpr);
+  const mid = h / 2, sig = css("--signal");
+  g.strokeStyle = sig; g.lineWidth = 2 * dpr; g.shadowColor = sig;
+  if (playing && analyser) {
+    const N = analyser.fftSize, buf = new Float32Array(N); analyser.getFloatTimeDomainData(buf);
+    let start = 0; for (let i = 1; i < N / 2; i++) if (buf[i - 1] < 0 && buf[i] >= 0) { start = i; break; }
+    const span = Math.min(N - start, Math.round(ctx.sampleRate / midiHz(playNote) * 3) || 600);
+    let peak = .05; for (let i = 0; i < span; i++) peak = Math.max(peak, Math.abs(buf[start + i]));
+    const k = (h * .42) / Math.max(peak, .25);
+    g.shadowBlur = 8 * dpr; g.beginPath();
+    for (let i = 0; i < span; i++) { const x = w * i / (span - 1), y = mid - buf[start + i] * k; i ? g.lineTo(x, y) : g.moveTo(x, y); }
+    g.stroke(); g.shadowBlur = 0;
+    $("scopeTag").textContent = "live · " + noteName(playNote) + (playMode === "chord" ? " chord" : "");
+  } else {
+    // idle: one picture of the oscillator mix (before filter), 2 cycles
+    const M = 400; let pk = .001; const ys = [];
+    for (let i = 0; i < M; i++) {
+      let y = 0;
+      for (let j = 0; j < snd.nOsc; j++) { const o = snd.osc[j]; y += o.level * waveSample(o, 2 * i / M * Math.pow(2, o.octave + o.cents / 1200)); }
+      ys.push(y); pk = Math.max(pk, Math.abs(y));
+    }
+    g.globalAlpha = .75; g.beginPath();
+    ys.forEach((y, i) => { const x = w * i / (M - 1), yy = mid - y / pk * h * .38; i ? g.lineTo(x, yy) : g.moveTo(x, yy); });
+    g.stroke(); g.globalAlpha = 1;
+    label(g, "oscillator mix · press Play to hear it", 6 * dpr, h - 6 * dpr, dpr);
+    $("scopeTag").textContent = "preview";
+  }
+}
+function scopeLoop() { drawScope(); if (playing) requestAnimationFrame(scopeLoop); }
+
+// ================= device dock =================
+const LAYOUT = [ // row by row, as on the board
+  ["knob", "par5", "par6", "stick"],
+  ["par1", "par2", "par3", "par4"],
+  [0, 2, 4, 6],           // B1 B3 B5 B7
+  ["logo", 1, 3, 5],      // x  B2 B4 B6
+];
+function buildDevice() {
+  const k = $("deviceKeys"); k.innerHTML = "";
+  for (const row of LAYOUT) for (const cell of row) {
+    const slot = document.createElement("div"); slot.className = "slot";
+    if (typeof cell === "number") {
+      const b = document.createElement("button"); b.type = "button"; b.className = "key bank"; b.dataset.bank = cell;
+      b.innerHTML = `<span class="id">B${cell + 1}</span><span class="nm"></span><span class="cost"></span>`;
+      b.addEventListener("click", () => { targetBank = cell; persist(); paintDock(); });
+      slot.appendChild(b);
+    } else if (cell === "knob") slot.innerHTML = `<div class="knob" title="Encoder"></div>`;
+    else if (cell === "stick") slot.innerHTML = `<div class="stick" title="Joystick"></div>`;
+    else if (cell === "logo") slot.innerHTML = `<div class="logo" aria-hidden="true">EL</div>`;
+    else {
+      const n = cell.slice(3), d = document.createElement("div");
+      d.className = "key dim" + (n === "5" ? " orange" : ""); d.innerHTML = `<small>PAR${n}</small>`;
+      slot.appendChild(d);
+    }
+    k.appendChild(slot);
+  }
+}
+function paintDock() {
+  for (const b of document.querySelectorAll(".key.bank")) {
+    const i = +b.dataset.bank; b.querySelector(".nm").textContent = banks[i].name;
+    const c = noteCost(banks[i]), ce = b.querySelector(".cost");
+    ce.textContent = c.toFixed(1) + " %"; ce.className = "cost " + costClass(c);
+    b.setAttribute("aria-pressed", String(i === targetBank));
+    b.setAttribute("aria-label", `Bank B${i + 1}: ${banks[i].name}, ${c.toFixed(1)} % CPU per note`);
+  }
+  paintBudget();
+  const id = "B" + (targetBank + 1);
+  $("tgtId").textContent = id; $("tgtName").textContent = "“" + banks[targetBank].name + "”";
+  $("btnAssign").textContent = "Assign to " + id;
+  $("btnLoadBank").textContent = "Edit " + id + "'s sound";
+  $("codeBox").value = banksToC();
+}
+function setStatus(msg, kind) { const s = $("status"); s.textContent = msg; s.className = "status" + (kind ? " " + kind : ""); }
+
+// ================= library =================
+function buildLibrary() {
+  const sel = $("libSelect"); sel.innerHTML = "";
+  const head = document.createElement("option"); head.textContent = "Load a sound…"; head.value = ""; sel.appendChild(head);
+  const g1 = document.createElement("optgroup"); g1.label = "Factory (current firmware)";
+  FACTORY.forEach((s, i) => { const o = document.createElement("option"); o.value = "f" + i; o.textContent = `B${i + 1} · ${s.name}`; g1.appendChild(o); });
+  sel.appendChild(g1);
+  const g2 = document.createElement("optgroup"); g2.label = mySounds.length ? "My sounds" : "My sounds (none saved yet)";
+  mySounds.forEach((s, i) => { const o = document.createElement("option"); o.value = "u" + i; o.textContent = s.name; g2.appendChild(o); });
+  sel.appendChild(g2);
+  sel.value = "";
+  paintDelete();
+}
+function paintDelete(confirming) {
+  const w = $("deleteWrap"); w.innerHTML = "";
+  const idx = mySounds.findIndex(s => s.name === snd.name);
+  if (idx < 0) return;
+  if (!confirming) {
+    const b = document.createElement("button"); b.className = "btn ghost"; b.textContent = "Delete"; b.onclick = () => paintDelete(true); w.appendChild(b);
+  } else {
+    w.innerHTML = `<span class="inline-confirm">Delete “${snd.name}”? <button class="btn danger" id="delYes">Delete</button><button class="btn ghost" id="delNo">Keep</button></span>`;
+    $("delYes").onclick = () => { mySounds.splice(idx, 1); persist(); buildLibrary(); setStatus("Deleted from my sounds."); };
+    $("delNo").onclick = () => paintDelete(false);
+  }
+}
+function loadSound(s) { snd = clone(s); paintAll(); onEdit("rebuild"); persist(); paintDelete(); }
+
+$("libSelect").addEventListener("change", e => {
+  const v = e.target.value; if (!v) return;
+  loadSound(v[0] === "f" ? FACTORY[+v.slice(1)] : mySounds[+v.slice(1)]);
+  e.target.value = "";
+});
+$("soundName").addEventListener("input", e => { snd.name = e.target.value.replace(/[^\x20-\x7e]/g, "").slice(0, 15); persist(); paintDelete(); });
+$("btnInit").addEventListener("click", () => { loadSound(INIT()); setStatus("Started a new sound from a plain sine."); });
+$("btnSave").addEventListener("click", () => {
+  if (!snd.name.trim()) snd.name = "My sound";
+  const i = mySounds.findIndex(s => s.name === snd.name);
+  if (i >= 0) mySounds[i] = clone(snd); else mySounds.push(clone(snd));
+  persist(); buildLibrary(); setStatus(`Saved “${snd.name}” to my sounds (in this browser).`, "ok");
+});
+
+// ================= dock actions =================
+$("btnAssign").addEventListener("click", () => {
+  banks[targetBank] = clone(snd); persist(); paintDock();
+  setStatus(`B${targetBank + 1} now holds “${snd.name}” in the app. Send it to the device, or copy the sounds.h code.`, "ok");
+});
+$("btnLoadBank").addEventListener("click", () => { loadSound(banks[targetBank]); setStatus(`Editing B${targetBank + 1}'s sound “${snd.name}”.`); });
+$("btnCode").addEventListener("click", () => { $("codeDetails").open = true; $("codeDetails").scrollIntoView({ behavior: "smooth", block: "start" }); });
+$("btnReset").addEventListener("click", () => {
+  const w = $("resetWrap");
+  w.innerHTML = `<span class="inline-confirm">Replace all 7 banks with the factory sounds? <button class="btn danger" id="rsYes">Reset</button><button class="btn ghost" id="rsNo">Cancel</button></span>`;
+  $("rsYes").onclick = () => { banks = FACTORY.map(clone); persist(); paintDock(); w.innerHTML = ""; setStatus("Banks reset to the factory sounds."); };
+  $("rsNo").onclick = () => { w.innerHTML = ""; };
+});
+$("btnCopy").addEventListener("click", () => {
+  const txt = $("codeBox").value;
+  const done = ok => { $("copyMsg").textContent = ok ? "Copied." : "Select the text and copy it with your keyboard."; if (!ok) { $("codeBox").focus(); $("codeBox").select(); } };
+  try { navigator.clipboard.writeText(txt).then(() => done(true), () => done(false)); } catch { done(false); }
+});
+
+// ---- USB MIDI link to the device (V1.0.7 F11) ----
+const REPLY_TIMEOUT_MS = 1000;
+const FIELD_NAMES = ["", "bank", "name", "level trim", "oscillator count",
+  "osc 1 waveform", "osc 1 width", "osc 1 detune", "osc 1 octave", "osc 1 level",
+  "osc 2 waveform", "osc 2 width", "osc 2 detune", "osc 2 octave", "osc 2 level",
+  "filter type", "resonance", "cutoff", "filter env amount",
+  "attack", "decay", "sustain", "release",
+  "filter attack", "filter decay", "filter sustain", "filter release"];
+const STATUS_TEXT = ["accepted", "the message header or version is wrong (app and firmware versions differ?)",
+  "the message length is wrong", "the checksum doesn't match (USB transfer error, try again)",
+  "the bank number is invalid", "a value is out of range", "the flash memory couldn't be written"];
+let midiAccess = null;
+
+async function getDevice() {
+  if (!navigator.requestMIDIAccess) return { err: "nomidi" };
+  try { midiAccess = midiAccess || await navigator.requestMIDIAccess({ sysex: true }); }
+  catch (err) { return { err: "refused", name: err && err.name }; }
+  const outs = [...midiAccess.outputs.values()], ins = [...midiAccess.inputs.values()];
+  const isAP = p => /acid|plum/i.test(p.name || "");
+  const out = outs.find(isAP);
+  if (!out) return { err: "noport", found: outs.map(o => o.name) };
+  return { out, inp: ins.find(i => i.name === out.name) || ins.find(isAP) };
+}
+
+// Send one message and wait for the device's reply to that command
+function sendAndWait(dev, msg) {
+  return new Promise(resolve => {
+    let timer = null;
+    const inp = dev.inp;
+    const done = v => { clearTimeout(timer); if (inp) inp.removeEventListener("midimessage", onMsg); resolve(v); };
+    function onMsg(ev) {
+      const d = ev.data;
+      if (d.length === 11 && d[0] === 0xF0 && d[1] === 0x7D && d[2] === 0x41 && d[3] === 0x50 && d[4] === 0x10 && d[6] === msg[4])
+        done({ status: d[8], detail: d[9], bank: d[7] });
+    }
+    if (inp) inp.addEventListener("midimessage", onMsg);
+    timer = setTimeout(() => done(null), REPLY_TIMEOUT_MS);
+    dev.out.send(msg);
+  });
+}
+
+function deviceErrorStatus(dev, what) {
+  if (dev.err === "nomidi") setStatus(`This browser has no Web MIDI, so nothing was sent. Use Chrome or Edge, or copy the sounds.h code.${what}`, "warn");
+  else if (dev.err === "refused") setStatus(`MIDI access was refused here (${dev.name || "blocked"}), so nothing was sent. Allow MIDI for this page, or open the app in Chrome or Edge directly.${what}`, "warn");
+  else setStatus(`No Acid Plum MIDI port found${dev.found && dev.found.length ? " (found: " + dev.found.join(", ") + ")" : ""}. Connect the Acid Plum with USB-C. If it's connected, check that it runs firmware V1.0.7 or later, uploaded with Tools → USB Stack → Adafruit TinyUSB.${what}`, "warn");
+}
+
+function replyText(rep, label) {
+  let why = STATUS_TEXT[rep.status] || `error ${rep.status}`;
+  if (rep.status === 5 && FIELD_NAMES[rep.detail]) why += ` (${FIELD_NAMES[rep.detail]})`;
+  return `The device rejected ${label}: ${why}.`;
+}
+
+let sending = false;
+$("btnSend").addEventListener("click", async () => {
+  if (sending) return;
+  banks[targetBank] = clone(snd); persist(); paintDock();
+  const bank = targetBank, name = snd.name;
+  const msg = sysexFor(snd, bank);
+  $("sysexBox").textContent = `B${bank + 1} “${name}” · ${msg.length} bytes\n` + hex(msg);
+  const dev = await getDevice();
+  if (dev.err) { deviceErrorStatus(dev, ` B${bank + 1} is assigned in the app.`); return; }
+  sending = true; $("btnSend").disabled = true;
+  setStatus(`Sending “${name}” to B${bank + 1}…`);
+  const rep = await sendAndWait(dev, msg);
+  sending = false; $("btnSend").disabled = false;
+  if (!rep) setStatus(`Sent, but the device didn't answer. Its firmware may be older than V1.0.7.`, "warn");
+  else if (rep.status === 0) setStatus(`Saved “${name}” on B${bank + 1} on the Acid Plum.`, "ok");
+  else setStatus(replyText(rep, "the sound"), "warn");
+});
+
+$("btnFactoryDev").addEventListener("click", () => {
+  const w = $("resetWrap");
+  w.innerHTML = `<span class="inline-confirm">Replace all 7 banks on the device with its factory sounds? <button class="btn danger" id="fdYes">Restore</button><button class="btn ghost" id="fdNo">Cancel</button></span>`;
+  $("fdNo").onclick = () => { w.innerHTML = ""; };
+  $("fdYes").onclick = async () => {
+    w.innerHTML = "";
+    const msg = Uint8Array.from([0xF0, 0x7D, 0x41, 0x50, 0x02, 0x01, 0x01, 0xF7]);
+    $("sysexBox").textContent = `Restore factory banks · ${msg.length} bytes\n` + hex(msg);
+    const dev = await getDevice();
+    if (dev.err) { deviceErrorStatus(dev, ""); return; }
+    setStatus("Restoring the factory banks on the device…");
+    const rep = await sendAndWait(dev, msg);
+    if (!rep) setStatus(`Sent, but the device didn't answer. Its firmware may be older than V1.0.7.`, "warn");
+    else if (rep.status === 0) { banks = FACTORY.map(clone); persist(); paintDock(); setStatus("The device is back to its factory sounds, and so are the banks here.", "ok"); }
+    else setStatus(replyText(rep, "the reset"), "warn");
+  };
+});
+
+// ================= play controls =================
+$("btnPlay").addEventListener("click", async () => {
+  ensureAudio(); if (ctx.state === "suspended") await ctx.resume();
+  playing = !playing;
+  $("btnPlay").setAttribute("aria-pressed", String(playing));
+  $("btnPlay").textContent = playing ? "■ Stop" : "▶ Play";
+  if (playing) { startAll(); requestAnimationFrame(scopeLoop); } else { stopAll(false); setTimeout(drawScope, 50); }
+});
+$("btnRetrig").addEventListener("click", () => { if (playing) retriggerIfPlaying(); });
+const setNote = m => { playNote = clamp(m, 36, 84); $("noteVal").textContent = noteName(playNote); if (playing) { stopAll(true); startAll(); } };
+$("noteDown").addEventListener("click", () => setNote(playNote - 1));
+$("noteUp").addEventListener("click", () => setNote(playNote + 1));
+for (const b of $("playMode").children) b.addEventListener("click", () => {
+  playMode = b.dataset.v; for (const x of $("playMode").children) x.setAttribute("aria-pressed", String(x === b));
+  if (playing) { stopAll(true); startAll(); }
+});
+
+// ================= paint =================
+// ---- CPU cost model: measured on the device (benchmark run 1, 250 MHz) ----
+// render load % = IDLE + notes x per-note cost; per-note = sum over oscillators
+// of (wave cost + filter cost when the filter is on). Matches all 7 factory
+// sounds within 0.1 %.
+const CPU = {
+  idle: 2.0, safe: 80, jamNotes: 24, maxNotes: 52,
+  wave: { 0: 1.4, 4: 1.2, 2: 1.85, 1: 3.0, 5: 1.4 },     // sine, tri, saw, pulse, noise (noise estimated)
+  filter: 1.0,                                            // per oscillator
+};
+const oscCost = (s, o) => (CPU.wave[o.wave] ?? 1.4) + (s.filter ? CPU.filter : 0);
+const noteCost = s => { let c = 0; for (let i = 0; i < s.nOsc; i++) c += oscCost(s, s.osc[i]); return c; };
+const jamLoad = (c, n = CPU.jamNotes) => CPU.idle + n * c;
+const notesThatFit = c => Math.floor((CPU.safe - CPU.idle) / c);
+const costClass = c => jamLoad(c) <= CPU.safe ? "ok" : jamLoad(c) <= 100 ? "warn" : "bad";
+const pct = v => v.toFixed(1).replace(/\.0$/, "") + " %";
+
+function costTips(s) {
+  const tips = [];
+  for (let i = 0; i < s.nOsc; i++) {
+    const w = s.osc[i].wave;
+    if (w === 1) tips.push({ save: CPU.wave[1] - CPU.wave[2], txt: `Osc ${i + 1}: Pulse → Saw (similar bright buzz)` });
+    if (w === 2) tips.push({ save: CPU.wave[2] - CPU.wave[4], txt: `Osc ${i + 1}: Saw → Tri (softer, fewer harmonics)` });
+  }
+  if (s.nOsc === 2) tips.push({ save: oscCost(s, s.osc[1]), txt: s.osc[0].cents || s.osc[1].cents ? "Turn off osc 2 (use the device's vibrato for movement instead of detune)" : "Turn off osc 2" });
+  if (s.filter) {
+    const open = s.cutoff >= 5000 && s.envOct === 0 && s.res < 1.5;
+    tips.push({ save: CPU.filter * s.nOsc, txt: "Bypass the filter" + (open ? " — it's almost fully open, so you'll barely hear the difference" : (s.nOsc === 2 ? " (it runs on both oscillators)" : "")) });
+  }
+  return tips.filter(t => t.save >= 0.3).sort((a, b) => b.save - a.save).slice(0, 3);
+}
+
+function paintBudget() {
+  const c = noteCost(snd), load = jamLoad(c), cls = costClass(c), fit = notesThatFit(c);
+  const b = $("costBadge");
+  b.className = "badge " + ({ ok: "light", warn: "medium", bad: "heavy" })[cls];
+  b.textContent = pct(c) + " / note";
+
+  const verdict = cls === "ok" ? (load <= 60 ? `fits a typical ${CPU.jamNotes}-note jam with room to spare` : `fits a typical ${CPU.jamNotes}-note jam`)
+    : cls === "warn" ? `fits a ${CPU.jamNotes}-note jam only just, above the 80 % safe line`
+    : `overloads a ${CPU.jamNotes}-note jam on its own: the device will drop notes`;
+  $("costLine").innerHTML = `Each note costs about <b>${pct(c)}</b> of the CPU. About <b>${fit} notes</b> fit under 80 %; this sound <b>${verdict}</b> (${Math.round(load)} %).`;
+
+  const bar = $("mJam");
+  bar.className = cls; bar.style.width = Math.min(100, load) + "%";
+  $("mJamLbl").textContent = `24 notes → ${Math.round(load)} %`;
+
+  let rows = "";
+  for (let i = 0; i < snd.nOsc; i++) {
+    const o = snd.osc[i], wl = waveById(o.wave).label;
+    rows += `<tr><td>Osc ${i + 1} · ${wl}${o.wave === 5 ? " (est.)" : ""}</td><td>${pct(CPU.wave[o.wave] ?? 1.4)}</td></tr>`;
+    if (snd.filter) rows += `<tr><td>&nbsp;&nbsp;filter on osc ${i + 1}</td><td>${pct(CPU.filter)}</td></tr>`;
+  }
+  rows += `<tr class="total"><td>Per note</td><td>${pct(c)}</td></tr>`;
+  rows += `<tr><td>1 note · 4-note chord · 24-note jam</td><td>${Math.round(jamLoad(c, 1))} · ${Math.round(jamLoad(c, 4))} · ${Math.round(load)} %</td></tr>`;
+  $("costTab").innerHTML = rows;
+
+  // compare with the bank it would replace, and the heaviest bank after the swap
+  const old = banks[targetBank], oc = noteCost(old), d = c - oc;
+  const after = banks.map((s, i) => i === targetBank ? snd : s);
+  let hi = 0; after.forEach((s, i) => { if (noteCost(s) > noteCost(after[hi])) hi = i; });
+  const hc = noteCost(after[hi]);
+  const diff = Math.abs(d) < 0.05 ? "the same cost per note" : `<b>${pct(Math.abs(d))} ${d > 0 ? "more" : "less"}</b> per note`;
+  $("costCompare").innerHTML = `Assigning to <b>B${targetBank + 1}</b> replaces “${old.name}” (${pct(oc)}): ${diff}. ` +
+    `Heaviest bank in the set afterwards: <b>B${hi + 1} “${after[hi].name}”</b>, ${pct(hc)}/note, about ${notesThatFit(hc)} notes under 80 %.`;
+
+  const tips = costTips(snd);
+  $("costTips").innerHTML = tips.length
+    ? tips.map(t => `<li>${t.txt}: saves <b>${pct(t.save)}</b>/note</li>`).join("")
+    : `<li>Already about as light as it gets.</li>`;
+}
+function paintAll() {
+  params.forEach(p => p.paint());
+  segs.forEach(s => s());
+  $("osc2On").checked = snd.nOsc > 1;
+  $("soundName").value = snd.name;
+  duty1.setEnabled(snd.osc[0].wave === 1);
+  duty2.setEnabled(snd.osc[1].wave === 1 && snd.nOsc > 1);
+  for (const p of params) if (p.row.parentElement.id === "osc2Params" && p !== duty2) p.setEnabled(snd.nOsc > 1);
+  $("osc2Wave").style.opacity = snd.nOsc > 1 ? 1 : .35;
+  [pCut, pRes, pEnvAmt].forEach(p => p.setEnabled(!!snd.filter));
+  fenvParams.forEach(p => p.setEnabled(!!snd.filter && snd.envOct > 0));
+  $("osc1Tag").textContent = waveById(snd.osc[0].wave).label.toLowerCase();
+  $("fltTag").textContent = snd.filter ? "Q " + snd.res.toFixed(1) : "bypassed";
+  $("fenvTag").textContent = snd.filter && snd.envOct > 0 ? "sweeps the cutoff" : "inactive (env amount 0)";
+  drawEnv("ampViz", snd.amp, {});
+  const fActive = snd.filter && snd.envOct > 0;
+  drawEnv("fenvViz", snd.fenv, { dim: !fActive, color: css("--signal"), fill: css("--signal-soft"), topLabel: fActive ? fmtHz(snd.cutoff) + " → " + fmtHz(fHz(1)) : "" });
+  drawFilter();
+  if (!playing) drawScope();
+  paintBudget();
+  paintDock();
+}
+function onEdit(kind) {
+  paintAll();
+  if (kind === "rebuild" && playing) { if (structOf(snd) !== structKey) { stopAll(true); startAll(); } else liveUpdate(); }
+  else liveUpdate();
+}
+
+// ================= boot =================
+buildDevice();
+buildLibrary();
+paintAll();
+let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(paintAll, 80); });
+document.fonts && document.fonts.ready.then(paintAll);
+})();
+</script>
